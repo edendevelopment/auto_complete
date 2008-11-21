@@ -1,4 +1,13 @@
-require File.expand_path(File.join(File.dirname(__FILE__), '../../../../test/test_helper')) 
+require "test/unit"
+require "rubygems"
+require "action_controller"
+require "action_controller/assertions"
+require "action_controller/mime_type"
+
+$:.unshift File.dirname(__FILE__) + '/../lib'
+require "auto_complete"
+require "auto_complete_macros_helper"
+require File.dirname(__FILE__) + '/../init'
 
 class AutoCompleteTest < Test::Unit::TestCase
   include AutoComplete
@@ -11,6 +20,7 @@ class AutoCompleteTest < Test::Unit::TestCase
   include ActionView::Helpers::CaptureHelper
   
   def setup
+    @protect_against_forgery = false
     @controller = Class.new do
       def url_for(options)
         url =  "http://www.example.com/"
@@ -44,6 +54,12 @@ class AutoCompleteTest < Test::Unit::TestCase
       auto_complete_field("some_input", :url => { :action => "autocomplete" }, :method => :get);
   end
   
+  def test_auto_complete_field_with_protect_against_forgery
+    @protect_against_forgery = true
+    assert_dom_equal %(<script type=\"text/javascript\">\n//<![CDATA[\nvar some_input_auto_completer = new Ajax.Autocompleter('some_input', 'some_input_auto_complete', 'http://www.example.com/autocomplete', {parameters:'authenticity_token=' + encodeURIComponent('some_secret_hash')})\n//]]>\n</script>),
+    auto_complete_field("some_input", :url => { :action => "autocomplete" });
+  end
+  
   def test_auto_complete_result
     result = [ { :title => 'test1'  }, { :title => 'test2'  } ]
     assert_equal %(<ul><li>test1</li><li>test2</li></ul>), 
@@ -63,5 +79,24 @@ class AutoCompleteTest < Test::Unit::TestCase
     assert_dom_equal %(<input id=\"message_recipient\" name=\"message[recipient]\" size=\"30\" type=\"text\" /><div class=\"auto_complete\" id=\"message_recipient_auto_complete\"></div><script type=\"text/javascript\">\n//<![CDATA[\nvar message_recipient_auto_completer = new Ajax.Autocompleter('message_recipient', 'message_recipient_auto_complete', 'http://www.example.com/auto_complete_for_message_recipient', {})\n//]]>\n</script>),
       text_field_with_auto_complete(:message, :recipient, {}, :skip_style => true)
   end
+  
+  def test_text_field_with_auto_complete_and_protect_against_forgery
+    @protect_against_forgery = true
+    assert_dom_equal %(<input id=\"message_recipient\" name=\"message[recipient]\" size=\"30\" type=\"text\" /><div class=\"auto_complete\" id=\"message_recipient_auto_complete\"></div><script type=\"text/javascript\">\n//<![CDATA[\nvar message_recipient_auto_completer = new Ajax.Autocompleter('message_recipient', 'message_recipient_auto_complete', 'http://www.example.com/auto_complete_for_message_recipient', {parameters:'authenticity_token=' + encodeURIComponent('some_secret_hash')})\n//]]>\n</script>),
+    text_field_with_auto_complete(:message, :recipient, {}, :skip_style => true)
+  end
+  
+  # stubbed CSRF-related methods for testing
+  def protect_against_forgery?
+    @protect_against_forgery # so we can turn it on and off for tests
+  end
+  
+  def request_forgery_protection_token
+    :authenticity_token
+  end
+  
+  def form_authenticity_token
+    "some_secret_hash"
+  end 
   
 end

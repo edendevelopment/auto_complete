@@ -69,6 +69,10 @@ module AutoCompleteMacrosHelper
     js_options[:paramName]  = "'#{options[:param_name]}'" if options[:param_name]
     js_options[:frequency]  = "#{options[:frequency]}" if options[:frequency]
     js_options[:method]     = "'#{options[:method].to_s}'" if options[:method]
+    
+    if protect_against_forgery? && js_options[:method] != "'get'"
+      js_options[:parameters] = "'#{request_forgery_protection_token}=' + encodeURIComponent('#{escape_javascript form_authenticity_token}')"
+    end
 
     { :after_update_element => :afterUpdateElement, 
       :on_show => :onShow, :on_hide => :onHide, :min_chars => :minChars }.each do |k,v|
